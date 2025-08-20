@@ -6,28 +6,55 @@
     <title>ScriptRunner AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #1f2937; }
+        /* Paleta de Cores "Galáxia" Inspirada na Imagem */
+        body { 
+            background-color: #1a1a2e; /* Azul quase preto do espaço */
+            background-image: radial-gradient(circle at top right, rgba(147, 51, 234, 0.15), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(232, 121, 249, 0.1), transparent 50%);
+        }
+        .container-bg {
+             background-color: #161625; /* Roxo escuro para o container principal */
+        }
+        .panel-bg {
+            background-color: #2c2c54; /* Roxo um pouco mais claro para painéis internos */
+        }
         .form-input, .form-select { 
-            background-color: #374151; 
-            border: 1px solid #4b5563; 
-            color: #d1d5db; 
+            background-color: #1a1a2e; 
+            border: 1px solid #4a4a7f; /* Borda roxa sutil */
+            color: #e0e0e0; 
             border-radius: 0.375rem; 
             padding: 0.5rem 0.75rem; 
             width: 100%;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #c084fc; /* Roxo claro no foco */
         }
         .form-input:disabled, .form-select:disabled {
-            background-color: #2d3748;
+            background-color: #2a2a3e;
             cursor: not-allowed;
             opacity: 0.6;
         }
-        .form-label { color: #d1d5db; margin-bottom: 0.5rem; display: block; }
+        .form-label { color: #d8b4fe; margin-bottom: 0.5rem; display: block; } /* Roxo bem claro para labels */
+        .highlight-label { color: #f472b6; } /* Rosa/Magenta para labels de destaque */
+        .btn-primary {
+            background-color: #9333ea; /* Roxo vibrante */
+            color: #ffffff;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #a855f7; /* Roxo mais claro no hover */
+        }
+        .text-main { color: #ffffff; }
+        .text-secondary { color: #a7a7d1; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen font-sans p-4">
-    <div class="bg-[#111827] p-8 rounded-lg shadow-2xl w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div class="container-bg p-8 rounded-xl shadow-2xl w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 border border-purple-800/50">
         <div>
-            <h2 class="text-xl font-bold text-white mb-6">1. Configurações</h2>
+            <h2 class="text-xl font-bold text-main mb-6">1. Configurações</h2>
             <form id="script-form" class="space-y-4">
                 <div>
                     <label for="webhook_url" class="form-label">URL do Webhook do Bitrix24*</label>
@@ -54,8 +81,8 @@
                 </div>
                 
                 <div id="update-fields">
-                    <div class="space-y-4 pt-4 border-t border-gray-700">
-                        <label class="form-label text-orange-400">Campos para Ação: Atualizar</label>
+                    <div class="space-y-4 pt-4 border-t border-purple-800/30">
+                        <label class="form-label highlight-label">Campos para Ação: Atualizar</label>
                         <div>
                             <label for="target_file" class="form-label">Arquivo com IDs (.xlsx)*</label>
                             <input type="file" id="target_file" class="form-input" accept=".xlsx">
@@ -71,7 +98,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-purple-800/30">
                     <div>
                         <label for="batch_size" class="form-label">Tamanho do Lote</label>
                         <input type="number" id="batch_size" class="form-input" value="50">
@@ -85,13 +112,13 @@
         </div>
         
         <div>
-            <h2 class="text-xl font-bold text-white mb-6">2. Controle e Progresso</h2>
-            <button id="start-button" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg text-lg">
+            <h2 class="text-xl font-bold text-main mb-6">2. Controle e Progresso</h2>
+            <button id="start-button" class="w-full btn-primary py-3 px-4 rounded-lg text-lg">
                 Iniciar Processamento
             </button>
-            <div id="status-area" class="mt-6 p-4 bg-[#1f2937] rounded-lg h-64 overflow-y-auto">
-                <p id="status-text" class="text-gray-400">Aguardando início do processo...</p>
-                <div id="log-output" class="text-gray-300 font-mono text-sm whitespace-pre-wrap"></div>
+            <div id="status-area" class="mt-6 p-4 panel-bg rounded-lg h-64 overflow-y-auto border border-purple-800/30">
+                <p id="status-text" class="text-secondary font-semibold mb-2">Aguardando início do processo...</p>
+                <div id="log-output" class="text-secondary font-mono text-sm whitespace-pre-wrap"></div>
             </div>
         </div>
     </div>
@@ -110,7 +137,7 @@
             });
         }
         actionSelect.addEventListener('change', toggleUpdateFields);
-        document.addEventListener('DOMContentLoaded', toggleUpdateFields); // Executa ao carregar a página
+        document.addEventListener('DOMContentLoaded', toggleUpdateFields);
 
         // --- LÓGICA DE ENVIO DO FORMULÁRIO ---
         const form = document.getElementById('script-form');
@@ -127,6 +154,7 @@
             const formData = new FormData();
             formData.append('webhook_base', document.getElementById('webhook_url').value);
             formData.append('entity', document.getElementById('entity').value);
+
             formData.append('action', document.getElementById('action').value);
             formData.append('batch_limit', document.getElementById('batch_size').value);
             formData.append('delay_batch', document.getElementById('pause_between_batches').value);
