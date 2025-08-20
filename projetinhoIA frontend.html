@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScriptRunner AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #1f2937; }
+        .form-input, .form-select { 
+            background-color: #374151; 
+            border: 1px solid #4b5563; 
+            color: #d1d5db; 
+            border-radius: 0.375rem; 
+            padding: 0.5rem 0.75rem; 
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        .form-input:disabled, .form-select:disabled {
+            background-color: #2d3748;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .form-label { color: #d1d5db; margin-bottom: 0.5rem; display: block; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen font-sans p-4">
+    <div class="bg-[#111827] p-8 rounded-lg shadow-2xl w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+            <h2 class="text-xl font-bold text-white mb-6">1. Configurações</h2>
+            <form id="script-form" class="space-y-4">
+                <div>
+                    <label for="webhook_url" class="form-label">URL do Webhook do Bitrix24*</label>
+                    <input type="text" id="webhook_url" class="form-input" placeholder="https://seusite.bitrix24.com.br/rest/..." required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="entity" class="form-label">Entidade*</label>
+                        <select id="entity" class="form-select" required>
+                            <option value="crm.contact">Contato</option>
+                            <option value="crm.company">Empresa</option>
+                            <option value="crm.deal">Negócio</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="action" class="form-label">Ação*</label>
+                        <select id="action" class="form-select" required>
+                            <option value="update">Atualizar (update)</option>
+                            <option value="get">Buscar (get)</option>
+                            <option value="add">Adicionar (add)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="update-fields">
+                    <div class="space-y-4 pt-4 border-t border-gray-700">
+                        <label class="form-label text-orange-400">Campos para Ação: Atualizar</label>
+                        <div>
+                            <label for="target_file" class="form-label">Arquivo com IDs (.xlsx)*</label>
+                            <input type="file" id="target_file" class="form-input" accept=".xlsx">
+                        </div>
+                        <div>
+                            <label for="field_id" class="form-label">ID do Campo a Atualizar*</label>
+                            <input type="text" id="field_id" class="form-input" placeholder="Ex: UF_CRM_123456789">
+                        </div>
+                         <div>
+                            <label for="new_value" class="form-label">Novo Valor para o Campo*</label>
+                            <input type="text" id="new_value" class="form-input" placeholder="Ex: Novo Cliente VIP">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                    <div>
+                        <label for="batch_size" class="form-label">Tamanho do Lote</label>
+                        <input type="number" id="batch_size" class="form-input" value="50">
+                    </div>
+                    <div>
+                        <label for="pause_between_batches" class="form-label">Pausa (segundos)</label>
+                        <input type="number" id="pause_between_batches" class="form-input" step="0.1" value="1.5">
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div>
+            <h2 class="text-xl font-bold text-white mb-6">2. Controle e Progresso</h2>
+            <button id="start-button" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg text-lg">
+                Iniciar Processamento
+            </button>
+            <div id="status-area" class="mt-6 p-4 bg-[#1f2937] rounded-lg h-64 overflow-y-auto">
+                <p id="status-text" class="text-gray-400">Aguardando início do processo...</p>
+                <div id="log-output" class="text-gray-300 font-mono text-sm whitespace-pre-wrap"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LÓGICA PARA GERENCIAR A INTERFACE DINAMICAMENTE ---
+        const actionSelect = document.getElementById('action');
+        const updateFieldsContainer = document.getElementById('update-fields');
+        const updateFields = updateFieldsContainer.querySelectorAll('input');
+
+        function toggleUpdateFields() {
+            const isUpdate = actionSelect.value === 'update';
+            updateFieldsContainer.style.display = isUpdate ? 'block' : 'none';
+            updateFields.forEach(input => {
+                input.required = isUpdate;
+            });
+        }
+        actionSelect.addEventListener('change', toggleUpdateFields);
+        document.addEventListener('DOMContentLoaded', toggleUpdateFields); // Executa ao carregar a página
+
+        // --- LÓGICA DE ENVIO DO FORMULÁRIO ---
+        const form = document.getElementById('script-form');
+        const startButton = document.getElementById('start-button');
+        const logOutput = document.getElementById('log-output');
+        const statusText = document.getElementById('status-text');
+
+        startButton.addEventListener('click', async () => {
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('webhook_base', document.getElementById('webhook_url').value);
+            formData.append('entity', document.getElementById('entity').value); // ATUALIZADO
+            formData.append('action', document.getElementById('action').value); // ATUALIZADO
+            formData.append('batch_limit', document.getElementById('batch_size').value);
+            formData.append('delay_batch', document.getElementById('pause_between_batches').value);
+
+            // Adiciona os campos de update apenas se a ação for 'update'
+            if (document.getElementById('action').value === 'update') {
+                formData.append('file', document.getElementById('target_file').files[0]);
+                formData.append('field_id', document.getElementById('field_id').value);
+
+                formData.append('new_value', document.getElementById('new_value').value);
+            }
+
+            startButton.disabled = true;
+            startButton.textContent = 'Processando...';
+            statusText.textContent = 'Enviando dados para o servidor...';
+            logOutput.innerHTML = '';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/execute', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    statusText.textContent = 'Processo Concluído!';
+                    logOutput.textContent = result.log;
+                } else { throw new Error(result.error); }
+            } catch (error) {
+                statusText.textContent = 'Erro na execução!';
+                logOutput.textContent = error.message;
+            } finally {
+                startButton.disabled = false;
+                startButton.textContent = 'Iniciar Processamento';
+            }
+        });
+    </script>
+</body>
+</html>
