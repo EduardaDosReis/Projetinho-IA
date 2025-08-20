@@ -126,16 +126,14 @@
 
             const formData = new FormData();
             formData.append('webhook_base', document.getElementById('webhook_url').value);
-            formData.append('entity', document.getElementById('entity').value); // ATUALIZADO
-            formData.append('action', document.getElementById('action').value); // ATUALIZADO
+            formData.append('entity', document.getElementById('entity').value);
+            formData.append('action', document.getElementById('action').value);
             formData.append('batch_limit', document.getElementById('batch_size').value);
             formData.append('delay_batch', document.getElementById('pause_between_batches').value);
 
-            // Adiciona os campos de update apenas se a ação for 'update'
             if (document.getElementById('action').value === 'update') {
                 formData.append('file', document.getElementById('target_file').files[0]);
                 formData.append('field_id', document.getElementById('field_id').value);
-
                 formData.append('new_value', document.getElementById('new_value').value);
             }
 
@@ -145,7 +143,7 @@
             logOutput.innerHTML = '';
 
             try {
-                const response = await fetch('http://127.0.0.1:5000/execute', {
+                const response = await fetch('https://projetinho-ia.onrender.com/execute', {
                     method: 'POST',
                     body: formData,
                 });
