@@ -1,1 +1,7 @@
+Flask
+flask-cors
+pandas
+requests
+openpyxl
+gunicorn
 
