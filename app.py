@@ -8,7 +8,8 @@ import io
 from urllib.parse import quote
 
 app = Flask(__name__)
-CORS(app)
+# ATUALIZAÇÃO: Especifica qual domínio pode acessar a API
+CORS(app, resources={r"/execute": {"origins": "https://eduardadosreis.github.io"}})
 
 # --- FUNÇÃO PRINCIPAL REESTRUTURADA ---
 def processar_requisicao_batch(webhook_base, entity, action, params, log_stream):
@@ -131,7 +132,7 @@ def execute_script():
     return jsonify({"message": "Execução concluída", "log": log_content})
 
 
-if __name__ == '__main__':
-    print("Servidor backend iniciado em http://127.0.0.1:5000")
-    print("Agora, abra o arquivo 'index.html' no seu navegador.")
-    app.run(port=5000, debug=True)
+# if __name__ == '__main__':
+#     print("Servidor backend iniciado em http://127.0.0.1:5000")
+#     print("Agora, abra o arquivo 'index.html' no seu navegador.")
+#     app.run(port=5000, debug=True)
